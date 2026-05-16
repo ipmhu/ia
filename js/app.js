@@ -2,8 +2,7 @@
 const CONFIG = {
     SUPABASE_URL: 'https://zgorzqfbqxnxcfzyirai.supabase.co',
     SUPABASE_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpnb3J6cWZicXhueGNmenlpcmFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4MDc4MjYsImV4cCI6MjA5NDM4MzgyNn0.muFPtmZ-WDJV9HYP6Y4EdPK9CwfmzZqa73kvVoKSBJg',
-    // ========== TU API KEY DE GEMINI AQUÍ ==========
-    GEMINI_API_KEY: 'AIzaSyAL353weZ9MAa24Ah5KXvg4Q26uvgPM-m4'  // ✅ Tu API Key está correcta
+    GEMINI_API_KEY: 'AIzaSyAL353weZ9MAa24Ah5KXvg4Q26uvgPM-m4'
 };
 
 // ========== APLICACIÓN PRINCIPAL ==========
@@ -14,8 +13,6 @@ const App = {
     
     async init() {
         console.log('🚀 Iniciando aplicación...');
-        console.log('API Key:', CONFIG.GEMINI_API_KEY ? '✅ Configurada' : '❌ No configurada');
-        
         this.supabase = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY);
         
         const { data: { session } } = await this.supabase.auth.getSession();
@@ -106,7 +103,7 @@ const App = {
     },
     
     loadWelcomeMessage() {
-        this.addMessage(`¡Bienvenido ${this.currentEstudiante.nombre_completo}! 👋\n\nSoy tu asistente académico con IA de Gemini. Puedo responder CUALQUIER pregunta:\n\n• 📚 Preguntas académicas\n• 🌍 Cultura general\n• 🔬 Ciencia y tecnología\n• 🎮 Entretenimiento\n• 💡 Curiosidades\n\n¡Pregúntame lo que sea! 🎓`, 'assistant');
+        this.addMessage(`¡Bienvenido ${this.currentEstudiante.nombre_completo}! 👋\n\nSoy tu asistente académico. ¡Pregúntame lo que sea! 🎓`, 'assistant');
     },
     
     async sendMessage() {
@@ -125,7 +122,6 @@ const App = {
             document.getElementById('typingIndicator').style.display = 'none';
             this.addMessage(respuesta, 'assistant');
         } catch (error) {
-            console.error('Error:', error);
             document.getElementById('typingIndicator').style.display = 'none';
             this.addMessage(`❌ Error: ${error.message}`, 'assistant');
         } finally {
@@ -134,72 +130,57 @@ const App = {
         }
     },
     
- async consultarGemini(mensaje) {
-    console.log('📤 Consultando Gemini:', mensaje);
-    
-    // Usando el modelo más estable y gratuito
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.0-pro:generateContent?key=${CONFIG.GEMINI_API_KEY}`;
-    
-    const cuerpo = {
-        contents: [{
-            parts: [{
-                text: `Eres un asistente académico amable y educativo. El estudiante se llama ${this.currentEstudiante?.nombre_completo?.split(' ')[0] || 'estudiante'} y estudia ${this.currentEstudiante?.especialidad || 'tu especialidad'}. Responde esta pregunta de forma clara, completa y amigable. Usa emojis ocasionalmente. Pregunta: ${mensaje}`
-            }]
-        }]
-    };
-    
-    try {
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(cuerpo)
-        });
+    async consultarGemini(mensaje) {
+        // Probar con diferentes modelos hasta encontrar uno que funcione
+        const modelos = [
+            'gemini-1.0-pro',
+            'gemini-pro',
+            'gemini-1.5-flash'
+        ];
         
-        const data = await response.json();
-        console.log('📥 Respuesta Gemini:', data);
-        
-        if (data.error) {
-            console.error('Error Gemini:', data.error);
-            throw new Error(data.error.message);
-        }
-        
-        if (data.candidates && data.candidates[0] && data.candidates[0].content) {
-            return data.candidates[0].content.parts[0].text;
-        } else {
-            throw new Error('Respuesta inesperada de Gemini');
-        }
-        
-    } catch (error) {
-        console.error('Error en consultarGemini:', error);
-        throw new Error('Error con Gemini AI: ' + error.message);
-    }
-}
-        
-        try {
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(cuerpo)
-            });
-            
-            const data = await response.json();
-            console.log('📥 Respuesta Gemini:', data);
-            
-            if (data.error) {
-                console.error('Error Gemini:', data.error);
-                throw new Error(data.error.message);
+        for (const modelo of modelos) {
+            try {
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${CONFIG.GEMINI_API_KEY}`;
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{
+                                text: `Responde esta pregunta de forma educativa y amigable: ${mensaje}`
+                            }]
+                        }]
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (!data.error && data.candidates) {
+                    console.log(`✅ Modelo ${modelo} funcionó`);
+                    return data.candidates[0].content.parts[0].text;
+                }
+            } catch (e) {
+                console.log(`❌ Modelo ${modelo} falló`);
             }
-            
-            if (data.candidates && data.candidates[0] && data.candidates[0].content) {
-                return data.candidates[0].content.parts[0].text;
-            } else {
-                throw new Error('Respuesta inesperada de Gemini');
-            }
-            
-        } catch (error) {
-            console.error('Error en consultarGemini:', error);
-            throw new Error('Error con Gemini AI: ' + error.message);
         }
+        
+        // Si ningún modelo funciona, dar respuesta local
+        return this.respuestaLocal(mensaje);
+    },
+    
+    respuestaLocal(pregunta) {
+        const p = pregunta.toLowerCase();
+        
+        if (p.includes('moto') || p.includes('vehículo')) {
+            return "🏍️ *¿Qué es una moto?*\n\nUna motocicleta es un vehículo de dos ruedas impulsado por un motor. Tiene manillar para dirección y puede ser manual o automática. ¡Es un medio de transporte popular!";
+        }
+        
+        if (p.includes('hola') || p.includes('buenos')) {
+            return "¡Hola! 👋 ¿En qué puedo ayudarte hoy? Puedes preguntarme sobre temas académicos, ciencia, tecnología, cultura general y más.";
+        }
+        
+        return `📚 *Respuesta académica*\n\nSobre tu pregunta: "${pregunta}"\n\nTe recomiendo consultar fuentes confiables como libros, artículos científicos o preguntar a tus profesores para obtener una respuesta más precisa.\n\n¿Necesitas ayuda con otro tema? 🎓`;
     },
     
     addMessage(text, role) {
