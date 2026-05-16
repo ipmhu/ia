@@ -134,19 +134,46 @@ const App = {
         }
     },
     
-    async consultarGemini(mensaje) {
-        console.log('📤 Consultando Gemini:', mensaje);
-        
-        // ✅ CORREGIDO: Usando el modelo correcto gemini-1.5-flash
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${CONFIG.GEMINI_API_KEY}`;
-        
-        const cuerpo = {
-            contents: [{
-                parts: [{
-                    text: `Eres un asistente académico amable y educativo. El estudiante se llama ${this.currentEstudiante?.nombre_completo?.split(' ')[0] || 'estudiante'} y estudia ${this.currentEstudiante?.especialidad || 'tu especialidad'}. Responde esta pregunta de forma clara, completa y amigable. Usa emojis ocasionalmente. Pregunta: ${mensaje}`
-                }]
+ async consultarGemini(mensaje) {
+    console.log('📤 Consultando Gemini:', mensaje);
+    
+    // Usando el modelo más estable y gratuito
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.0-pro:generateContent?key=${CONFIG.GEMINI_API_KEY}`;
+    
+    const cuerpo = {
+        contents: [{
+            parts: [{
+                text: `Eres un asistente académico amable y educativo. El estudiante se llama ${this.currentEstudiante?.nombre_completo?.split(' ')[0] || 'estudiante'} y estudia ${this.currentEstudiante?.especialidad || 'tu especialidad'}. Responde esta pregunta de forma clara, completa y amigable. Usa emojis ocasionalmente. Pregunta: ${mensaje}`
             }]
-        };
+        }]
+    };
+    
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(cuerpo)
+        });
+        
+        const data = await response.json();
+        console.log('📥 Respuesta Gemini:', data);
+        
+        if (data.error) {
+            console.error('Error Gemini:', data.error);
+            throw new Error(data.error.message);
+        }
+        
+        if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+            return data.candidates[0].content.parts[0].text;
+        } else {
+            throw new Error('Respuesta inesperada de Gemini');
+        }
+        
+    } catch (error) {
+        console.error('Error en consultarGemini:', error);
+        throw new Error('Error con Gemini AI: ' + error.message);
+    }
+}
         
         try {
             const response = await fetch(url, {
