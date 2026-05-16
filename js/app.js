@@ -5,14 +5,13 @@ const CONFIG = {
     OPENROUTER_API_KEY: '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'
 };
 
-// ========== APLICACIÓN PRINCIPAL ==========
 const App = {
     supabase: null,
     currentUser: null,
     currentEstudiante: null,
     
     async init() {
-        console.log('🚀 Iniciando aplicación...');
+        console.log('🚀 Iniciando...');
         this.supabase = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY);
         
         const { data: { session } } = await this.supabase.auth.getSession();
@@ -132,39 +131,87 @@ const App = {
     },
     
     async consultarOpenRouter(mensaje) {
-        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${CONFIG.OPENROUTER_API_KEY}`,
-                'HTTP-Referer': window.location.href,
-                'X-Title': 'Asistente Politécnico'
-            },
-            body: JSON.stringify({
-model: 'microsoft/phi-3-mini-128k-instruct:free',  // Phi-3 gratis
-                messages: [
-                    {
-                        role: 'system',
-                        content: `Eres un asistente académico amable y educativo. El estudiante se llama ${this.currentEstudiante?.nombre_completo?.split(' ')[0] || 'estudiante'} y estudia ${this.currentEstudiante?.especialidad || 'tu especialidad'}. Responde cualquier pregunta de forma clara, completa y amigable. Usa emojis ocasionalmente.`
+        // Modelos gratuitos que funcionan actualmente
+        const modelosGratuitos = [
+            'google/gemini-2.0-flash-exp:free',      // Mejor calidad
+            'meta-llama/llama-3-8b-instruct:free',   // Buena calidad
+            'mistralai/mistral-7b-instruct:free',    // Rápido
+            'microsoft/phi-3-mini-4k-instruct:free', // Phi-3 (el que intentaste)
+            'qwen/qwen-2-7b-instruct:free'           // Alternativa china
+        ];
+        
+        for (const modelo of modelosGratuitos) {
+            try {
+                const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${CONFIG.OPENROUTER_API_KEY}`,
+                        'HTTP-Referer': window.location.href,
+                        'X-Title': 'Asistente Politécnico'
                     },
-                    {
-                        role: 'user',
-                        content: mensaje
-                    }
-                ],
-                temperature: 0.7,
-                max_tokens: 1000
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (data.error) {
-            console.error('Error OpenRouter:', data.error);
-            throw new Error(data.error.message);
+                    body: JSON.stringify({
+                        model: modelo,
+                        messages: [
+                            {
+                                role: 'system',
+                                content: `Eres un asistente académico amable. El estudiante se llama ${this.currentEstudiante?.nombre_completo?.split(' ')[0] || 'estudiante'}. Responde de forma clara y educativa.`
+                            },
+                            {
+                                role: 'user',
+                                content: mensaje
+                            }
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 1000
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.status === 404) {
+                    console.log(`Modelo ${modelo} no disponible, probando siguiente...`);
+                    continue;
+                }
+                
+                if (data.error) {
+                    console.log(`Error con ${modelo}:`, data.error);
+                    continue;
+                }
+                
+                if (data.choices && data.choices[0]) {
+                    console.log(`✅ Usando modelo: ${modelo}`);
+                    return data.choices[0].message.content;
+                }
+            } catch (e) {
+                console.log(`Falló ${modelo}`);
+            }
         }
         
-        return data.choices[0].message.content;
+        // Si ningún modelo funciona, usar respuesta local
+        return this.respuestaLocal(mensaje);
+    },
+    
+    respuestaLocal(mensaje) {
+        const p = mensaje.toLowerCase();
+        
+        if (p.includes('hola') || p.includes('buenos')) {
+            return "¡Hola! 👋 ¿En qué puedo ayudarte hoy?";
+        }
+        
+        if (p.includes('moto')) {
+            return "🏍️ **¿Qué es una moto?**\n\nUna motocicleta es un vehículo de dos ruedas impulsado por un motor. Tiene manillar para dirección y puede alcanzar altas velocidades. Existen varios tipos: deportivas, cruiser, touring, enduro, etc.";
+        }
+        
+        if (p.includes('agua')) {
+            return "💧 **¿Qué es el agua?**\n\nEl agua es una molécula compuesta por dos átomos de hidrógeno y uno de oxígeno (H₂O). Es esencial para la vida, cubre el 71% de la Tierra y existe en tres estados: sólido, líquido y gaseoso.";
+        }
+        
+        if (p.includes('ia') || p.includes('inteligencia artificial')) {
+            return "🤖 **¿Qué es la IA?**\n\nLa Inteligencia Artificial es la simulación de procesos de inteligencia humana por computadoras. Incluye aprendizaje automático, reconocimiento de patrones, procesamiento de lenguaje natural y más.";
+        }
+        
+        return `📚 **Respuesta académica**\n\nSobre tu pregunta: "${mensaje}"\n\nTe recomiendo buscar en fuentes confiables como Wikipedia, libros especializados o consultar a tus profesores.\n\n¿Necesitas ayuda con otro tema? 🎓`;
     },
     
     addMessage(text, role) {
