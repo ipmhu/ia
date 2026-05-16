@@ -2,7 +2,8 @@
 const CONFIG = {
     SUPABASE_URL: 'https://zgorzqfbqxnxcfzyirai.supabase.co',
     SUPABASE_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpnb3J6cWZicXhueGNmenlpcmFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4MDc4MjYsImV4cCI6MjA5NDM4MzgyNn0.muFPtmZ-WDJV9HYP6Y4EdPK9CwfmzZqa73kvVoKSBJg',
-    DEEPSEEK_API_KEY: 'sk-bd31a79ce6344b52ac743e2bf750ffb1'  
+    // ========== OBTÉN TU API KEY GRATIS EN: https://makersuite.google.com/app/apikey ==========
+    GEMINI_API_KEY: 'AIzaSyAL353weZ9MAa24Ah5KXvg4Q26uvgPM-m4'  // <--- Pega aquí tu API Key de Gemini
 };
 
 // ========== APLICACIÓN PRINCIPAL ==========
@@ -14,9 +15,9 @@ const App = {
     async init() {
         console.log('🚀 Iniciando aplicación...');
         
-        // Verificar API Key
-        if (!CONFIG.DEEPSEEK_API_KEY || CONFIG.DEEPSEEK_API_KEY === 'sk-tu-api-key-aqui') {
-            console.warn('⚠️ No has configurado tu API Key de DeepSeek');
+        if (!CONFIG.GEMINI_API_KEY) {
+            console.warn('⚠️ Configura tu API Key de Gemini en CONFIG.GEMINI_API_KEY');
+            console.warn('Ve a: https://makersuite.google.com/app/apikey');
         }
         
         this.supabase = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY);
@@ -131,7 +132,11 @@ const App = {
     },
     
     loadWelcomeMessage() {
-        const welcomeMessage = `¡Bienvenido ${this.currentEstudiante.nombre_completo}! 👋\n\nSoy tu asistente académico con IA de DeepSeek. Puedo responder CUALQUIER pregunta:\n\n• 📚 Preguntas académicas\n• 🌍 Cultura general\n• 🔬 Ciencia y tecnología\n• 🎮 Entretenimiento\n• 💡 Curiosidades\n• Y mucho más...\n\n¡Pregúntame lo que sea! 🎓`;
+        let welcomeMessage = `¡Bienvenido ${this.currentEstudiante.nombre_completo}! 👋\n\nSoy tu asistente académico con IA. Puedo responder CUALQUIER pregunta:\n\n• 📚 Preguntas académicas\n• 🌍 Cultura general\n• 🔬 Ciencia y tecnología\n• 🎮 Entretenimiento\n• 💡 Curiosidades\n• Y mucho más...\n\n¡Pregúntame lo que sea! 🎓`;
+        
+        if (!CONFIG.GEMINI_API_KEY) {
+            welcomeMessage += `\n\n⚠️ *Configuración pendiente:*\n1. Ve a https://makersuite.google.com/app/apikey\n2. Obtén tu API Key gratis\n3. Pégala en CONFIG.GEMINI_API_KEY en app.js`;
+        }
         
         this.addMessage(welcomeMessage, 'assistant');
     },
@@ -151,7 +156,13 @@ const App = {
         if (sendBtn) sendBtn.disabled = true;
         
         try {
-            const respuesta = await this.consultarDeepSeek(message);
+            let respuesta;
+            
+            if (!CONFIG.GEMINI_API_KEY) {
+                respuesta = "🔑 *Configura tu API Key primero:*\n\n1. Ve a https://makersuite.google.com/app/apikey\n2. Inicia sesión con Google\n3. Crea una API Key\n4. Pégala en CONFIG.GEMINI_API_KEY en app.js\n\n¡Es totalmente GRATIS! 🎉";
+            } else {
+                respuesta = await this.consultarGemini(message);
+            }
             
             if (typing) typing.style.display = 'none';
             this.addMessage(respuesta, 'assistant');
@@ -166,57 +177,34 @@ const App = {
         }
     },
     
-    async consultarDeepSeek(mensaje) {
-        console.log('📤 Enviando a DeepSeek:', mensaje);
-        
+    async consultarGemini(mensaje) {
         try {
-            const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${CONFIG.GEMINI_API_KEY}`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${CONFIG.DEEPSEEK_API_KEY}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    model: 'deepseek-chat',
-                    messages: [
-                        {
-                            role: 'system',
-                            content: `Eres un asistente académico llamado "Asistente Politécnico". 
-                            Eres amable, educativo y das respuestas claras, completas y útiles. 
-                            El estudiante se llama ${this.currentEstudiante?.nombre_completo?.split(' ')[0] || 'estudiante'} 
-                            y estudia ${this.currentEstudiante?.especialidad || 'una especialidad'}.
-                            Responde cualquier pregunta de forma educativa, completa y amigable.
-                            Usa emojis ocasionalmente para hacer la conversación más amena.
-                            Si te preguntan sobre calificaciones o horarios específicos, indica que necesitas acceso a la base de datos.`
-                        },
-                        {
-                            role: 'user',
-                            content: mensaje
-                        }
-                    ],
-                    temperature: 0.7,
-                    max_tokens: 1000,
-                    stream: false
+                    contents: [{
+                        parts: [{
+                            text: `Eres un asistente académico llamado "Asistente Politécnico". Eres amable, educativo y das respuestas claras, completas y útiles. El estudiante se llama ${this.currentEstudiante?.nombre_completo?.split(' ')[0] || 'estudiante'} y estudia ${this.currentEstudiante?.especialidad || 'una especialidad'}. Responde cualquier pregunta de forma educativa, completa y amigable. Usa emojis ocasionalmente. Pregunta: ${mensaje}`
+                        }]
+                    }]
                 })
             });
             
             const data = await response.json();
-            console.log('📥 Respuesta DeepSeek:', data);
             
             if (data.error) {
-                console.error('Error API DeepSeek:', data.error);
-                throw new Error(`DeepSeek Error: ${data.error.message}`);
+                console.error('Error Gemini:', data.error);
+                throw new Error(data.error.message);
             }
             
-            if (data.choices && data.choices[0] && data.choices[0].message) {
-                return data.choices[0].message.content;
-            } else {
-                throw new Error('Respuesta inesperada de DeepSeek');
-            }
+            return data.candidates[0].content.parts[0].text;
             
         } catch (error) {
-            console.error('Error en consultarDeepSeek:', error);
-            throw new Error('Error de conexión con DeepSeek. Verifica tu API Key y conexión a internet.');
+            console.error('Error en consultarGemini:', error);
+            throw new Error('Error con Gemini AI: ' + error.message);
         }
     },
     
@@ -230,7 +218,6 @@ const App = {
         const avatar = role === 'user' ? '👤' : '🤖';
         const time = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
         
-        // Escapar HTML
         const temp = document.createElement('div');
         temp.textContent = text;
         const safeText = temp.innerHTML.replace(/\n/g, '<br>');
@@ -270,7 +257,6 @@ const App = {
     }
 };
 
-// Iniciar cuando cargue la página
 document.addEventListener('DOMContentLoaded', () => {
     App.init();
 });
