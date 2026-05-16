@@ -2,7 +2,7 @@
 const CONFIG = {
     SUPABASE_URL: 'https://zgorzqfbqxnxcfzyirai.supabase.co',
     SUPABASE_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpnb3J6cWZicXhueGNmenlpcmFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4MDc4MjYsImV4cCI6MjA5NDM4MzgyNn0.muFPtmZ-WDJV9HYP6Y4EdPK9CwfmzZqa73kvVoKSBJg',
-    OPENROUTER_API_KEY: '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'
+    OPENROUTER_API_KEY: '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'
 };
 
 const App = {
