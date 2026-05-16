@@ -141,7 +141,7 @@ const App = {
                 'X-Title': 'Asistente Politécnico'
             },
             body: JSON.stringify({
-                model: 'google/gemini-2.0-flash-exp:free',
+model: 'microsoft/phi-3-mini-128k-instruct:free',  // Phi-3 gratis
                 messages: [
                     {
                         role: 'system',
