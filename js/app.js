@@ -2,10 +2,10 @@
 const CONFIG = {
     SUPABASE_URL: 'https://zgorzqfbqxnxcfzyirai.supabase.co',
     SUPABASE_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpnb3J6cWZicXhueGNmenlpcmFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4MDc4MjYsImV4cCI6MjA5NDM4MzgyNn0.muFPtmZ-WDJV9HYP6Y4EdPK9CwfmzZqa73kvVoKSBJg',
-    // Usar OpenRouter (gratis, sin necesidad de tarjeta)
-    OPENROUTER_API_KEY: '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'  // Puedes dejarlo vacío, usará APIs gratis
+    OPENROUTER_API_KEY: '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'
 };
 
+// ========== APLICACIÓN PRINCIPAL ==========
 const App = {
     supabase: null,
     currentUser: null,
@@ -118,10 +118,11 @@ const App = {
         document.getElementById('sendBtn').disabled = true;
         
         try {
-            const respuesta = await this.consultarIA(message);
+            const respuesta = await this.consultarOpenRouter(message);
             document.getElementById('typingIndicator').style.display = 'none';
             this.addMessage(respuesta, 'assistant');
         } catch (error) {
+            console.error('Error:', error);
             document.getElementById('typingIndicator').style.display = 'none';
             this.addMessage(`❌ Error: ${error.message}`, 'assistant');
         } finally {
@@ -130,46 +131,40 @@ const App = {
         }
     },
     
-    async consultarIA(mensaje) {
-        // Usar API gratuita de Hugging Face (sin necesidad de key)
-        try {
-            const response = await fetch('https://api-inference.huggingface.co/models/microsoft/DialoGPT-medium', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ inputs: mensaje })
-            });
-            
-            const data = await response.json();
-            if (data.generated_text) {
-                return data.generated_text;
-            }
-        } catch (e) {
-            console.log('Hugging Face falló, usando respuesta local');
+    async consultarOpenRouter(mensaje) {
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${CONFIG.OPENROUTER_API_KEY}`,
+                'HTTP-Referer': window.location.href,
+                'X-Title': 'Asistente Politécnico'
+            },
+            body: JSON.stringify({
+                model: 'google/gemini-2.0-flash-exp:free',
+                messages: [
+                    {
+                        role: 'system',
+                        content: `Eres un asistente académico amable y educativo. El estudiante se llama ${this.currentEstudiante?.nombre_completo?.split(' ')[0] || 'estudiante'} y estudia ${this.currentEstudiante?.especialidad || 'tu especialidad'}. Responde cualquier pregunta de forma clara, completa y amigable. Usa emojis ocasionalmente.`
+                    },
+                    {
+                        role: 'user',
+                        content: mensaje
+                    }
+                ],
+                temperature: 0.7,
+                max_tokens: 1000
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.error) {
+            console.error('Error OpenRouter:', data.error);
+            throw new Error(data.error.message);
         }
         
-        // Fallback: respuesta local inteligente
-        return this.respuestaLocal(mensaje);
-    },
-    
-    respuestaLocal(pregunta) {
-        const p = pregunta.toLowerCase();
-        
-        const respuestas = {
-            'hola': '¡Hola! 👋 ¿En qué puedo ayudarte hoy?',
-            'que es una moto': '🏍️ Una motocicleta es un vehículo de dos ruedas impulsado por un motor. Tiene manillar para dirección y puede alcanzar altas velocidades.',
-            'que es el amor': '💖 El amor es un sentimiento de afecto, conexión y cuidado hacia alguien o algo. La psicología lo define como una combinación de intimidad, pasión y compromiso.',
-            'que es la ia': '🤖 La Inteligencia Artificial es la simulación de procesos de inteligencia humana por parte de computadoras. Incluye aprendizaje, razonamiento y autocorrección.'
-        };
-        
-        for (const [key, value] of Object.entries(respuestas)) {
-            if (p.includes(key)) return value;
-        }
-        
-        if (p.includes('que es') || p.includes('qué es')) {
-            return `📚 *Sobre: "${pregunta}"*\n\nTe recomiendo investigar en Wikipedia, libros o preguntar a tus profesores para obtener una respuesta más precisa. ¿Necesitas ayuda con otro tema? 🎓`;
-        }
-        
-        return `📚 *Respuesta académica*\n\nTu pregunta: "${pregunta}"\n\nPara una mejor respuesta, intenta:\n• Ser más específico\n• Preguntar "¿Qué es...?"\n• Escribir "hola" para ver ejemplos\n\n¿Necesitas ayuda con algo más? 🎓`;
+        return data.choices[0].message.content;
     },
     
     addMessage(text, role) {
