@@ -2,8 +2,8 @@
 const CONFIG = {
     SUPABASE_URL: 'https://zgorzqfbqxnxcfzyirai.supabase.co',
     SUPABASE_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpnb3J6cWZicXhueGNmenlpcmFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4MDc4MjYsImV4cCI6MjA5NDM4MzgyNn0.muFPtmZ-WDJV9HYP6Y4EdPK9CwfmzZqa73kvVoKSBJg',
-    // ========== OBTÉN TU API KEY GRATIS EN: https://makersuite.google.com/app/apikey ==========
-    GEMINI_API_KEY: 'AIzaSyAL353weZ9MAa24Ah5KXvg4Q26uvgPM-m4'  // <--- Pega aquí tu API Key de Gemini
+    // ========== TU API KEY DE GEMINI AQUÍ ==========
+    GEMINI_API_KEY: 'AIzaSyAL353weZ9MAa24Ah5KXvg4Q26uvgPM-m4'  // ✅ Tu API Key está correcta
 };
 
 // ========== APLICACIÓN PRINCIPAL ==========
@@ -14,11 +14,7 @@ const App = {
     
     async init() {
         console.log('🚀 Iniciando aplicación...');
-        
-        if (!CONFIG.GEMINI_API_KEY) {
-            console.warn('⚠️ Configura tu API Key de Gemini en CONFIG.GEMINI_API_KEY');
-            console.warn('Ve a: https://makersuite.google.com/app/apikey');
-        }
+        console.log('API Key:', CONFIG.GEMINI_API_KEY ? '✅ Configurada' : '❌ No configurada');
         
         this.supabase = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY);
         
@@ -36,34 +32,24 @@ const App = {
     },
     
     setupEvents() {
-        const loginForm = document.getElementById('loginForm');
-        if (loginForm) {
-            loginForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                this.login();
-            });
-        }
+        document.getElementById('loginForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.login();
+        });
         
-        const messageInput = document.getElementById('messageInput');
-        if (messageInput) {
-            messageInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') this.sendMessage();
-            });
-        }
+        document.getElementById('messageInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') this.sendMessage();
+        });
     },
     
     showLogin() {
-        const loginScreen = document.getElementById('loginScreen');
-        const chatScreen = document.getElementById('chatScreen');
-        if (loginScreen) loginScreen.classList.add('active');
-        if (chatScreen) chatScreen.classList.remove('active');
+        document.getElementById('loginScreen').classList.add('active');
+        document.getElementById('chatScreen').classList.remove('active');
     },
     
     showChat() {
-        const loginScreen = document.getElementById('loginScreen');
-        const chatScreen = document.getElementById('chatScreen');
-        if (loginScreen) loginScreen.classList.remove('active');
-        if (chatScreen) chatScreen.classList.add('active');
+        document.getElementById('loginScreen').classList.remove('active');
+        document.getElementById('chatScreen').classList.add('active');
         this.loadWelcomeMessage();
     },
     
@@ -72,24 +58,18 @@ const App = {
         const password = document.getElementById('password').value;
         const btn = document.getElementById('btnLogin');
         
-        if (!btn) return;
-        
         btn.disabled = true;
-        const btnText = btn.querySelector('.btn-text');
-        const btnLoader = btn.querySelector('.btn-loader');
-        if (btnText) btnText.style.display = 'none';
-        if (btnLoader) btnLoader.style.display = 'inline';
+        btn.querySelector('.btn-text').style.display = 'none';
+        btn.querySelector('.btn-loader').style.display = 'inline';
         
         try {
-            const { data: estudiante, error: estudianteError } = await this.supabase
+            const { data: estudiante } = await this.supabase
                 .from('estudiantes')
                 .select('email')
                 .eq('matricula', matricula)
                 .single();
             
-            if (estudianteError || !estudiante) {
-                throw new Error('Matrícula no encontrada');
-            }
+            if (!estudiante) throw new Error('Matrícula no encontrada');
             
             const { data, error } = await this.supabase.auth.signInWithPassword({
                 email: estudiante.email,
@@ -104,16 +84,13 @@ const App = {
             
         } catch (err) {
             const errorDiv = document.getElementById('loginError');
-            if (errorDiv) {
-                const errorText = errorDiv.querySelector('.error-text');
-                if (errorText) errorText.textContent = err.message;
-                errorDiv.classList.add('show');
-                setTimeout(() => errorDiv.classList.remove('show'), 3000);
-            }
+            errorDiv.querySelector('.error-text').textContent = err.message;
+            errorDiv.classList.add('show');
+            setTimeout(() => errorDiv.classList.remove('show'), 3000);
         } finally {
             btn.disabled = false;
-            if (btnText) btnText.style.display = 'inline';
-            if (btnLoader) btnLoader.style.display = 'none';
+            btn.querySelector('.btn-text').style.display = 'inline';
+            btn.querySelector('.btn-loader').style.display = 'none';
         }
     },
     
@@ -125,20 +102,11 @@ const App = {
             .single();
         
         this.currentEstudiante = data;
-        const userNameDisplay = document.getElementById('userNameDisplay');
-        if (userNameDisplay) {
-            userNameDisplay.textContent = `${data.nombre_completo} | ${data.especialidad}`;
-        }
+        document.getElementById('userNameDisplay').textContent = `${data.nombre_completo} | ${data.especialidad}`;
     },
     
     loadWelcomeMessage() {
-        let welcomeMessage = `¡Bienvenido ${this.currentEstudiante.nombre_completo}! 👋\n\nSoy tu asistente académico con IA. Puedo responder CUALQUIER pregunta:\n\n• 📚 Preguntas académicas\n• 🌍 Cultura general\n• 🔬 Ciencia y tecnología\n• 🎮 Entretenimiento\n• 💡 Curiosidades\n• Y mucho más...\n\n¡Pregúntame lo que sea! 🎓`;
-        
-        if (!CONFIG.GEMINI_API_KEY) {
-            welcomeMessage += `\n\n⚠️ *Configuración pendiente:*\n1. Ve a https://makersuite.google.com/app/apikey\n2. Obtén tu API Key gratis\n3. Pégala en CONFIG.GEMINI_API_KEY en app.js`;
-        }
-        
-        this.addMessage(welcomeMessage, 'assistant');
+        this.addMessage(`¡Bienvenido ${this.currentEstudiante.nombre_completo}! 👋\n\nSoy tu asistente académico con IA de Gemini. Puedo responder CUALQUIER pregunta:\n\n• 📚 Preguntas académicas\n• 🌍 Cultura general\n• 🔬 Ciencia y tecnología\n• 🎮 Entretenimiento\n• 💡 Curiosidades\n\n¡Pregúntame lo que sea! 🎓`, 'assistant');
     },
     
     async sendMessage() {
@@ -149,58 +117,57 @@ const App = {
         this.addMessage(message, 'user');
         input.value = '';
         
-        const typing = document.getElementById('typingIndicator');
-        if (typing) typing.style.display = 'block';
-        
-        const sendBtn = document.getElementById('sendBtn');
-        if (sendBtn) sendBtn.disabled = true;
+        document.getElementById('typingIndicator').style.display = 'block';
+        document.getElementById('sendBtn').disabled = true;
         
         try {
-            let respuesta;
-            
-            if (!CONFIG.GEMINI_API_KEY) {
-                respuesta = "🔑 *Configura tu API Key primero:*\n\n1. Ve a https://makersuite.google.com/app/apikey\n2. Inicia sesión con Google\n3. Crea una API Key\n4. Pégala en CONFIG.GEMINI_API_KEY en app.js\n\n¡Es totalmente GRATIS! 🎉";
-            } else {
-                respuesta = await this.consultarGemini(message);
-            }
-            
-            if (typing) typing.style.display = 'none';
+            const respuesta = await this.consultarGemini(message);
+            document.getElementById('typingIndicator').style.display = 'none';
             this.addMessage(respuesta, 'assistant');
-            
         } catch (error) {
             console.error('Error:', error);
-            if (typing) typing.style.display = 'none';
-            this.addMessage('Lo siento, tuve un problema. ' + error.message, 'assistant');
+            document.getElementById('typingIndicator').style.display = 'none';
+            this.addMessage(`❌ Error: ${error.message}`, 'assistant');
         } finally {
-            if (sendBtn) sendBtn.disabled = false;
+            document.getElementById('sendBtn').disabled = false;
             this.scrollToBottom();
         }
     },
     
     async consultarGemini(mensaje) {
+        console.log('📤 Consultando Gemini:', mensaje);
+        
+        // ✅ CORREGIDO: Usando el modelo correcto gemini-1.5-flash
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${CONFIG.GEMINI_API_KEY}`;
+        
+        const cuerpo = {
+            contents: [{
+                parts: [{
+                    text: `Eres un asistente académico amable y educativo. El estudiante se llama ${this.currentEstudiante?.nombre_completo?.split(' ')[0] || 'estudiante'} y estudia ${this.currentEstudiante?.especialidad || 'tu especialidad'}. Responde esta pregunta de forma clara, completa y amigable. Usa emojis ocasionalmente. Pregunta: ${mensaje}`
+                }]
+            }]
+        };
+        
         try {
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${CONFIG.GEMINI_API_KEY}`, {
+            const response = await fetch(url, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    contents: [{
-                        parts: [{
-                            text: `Eres un asistente académico llamado "Asistente Politécnico". Eres amable, educativo y das respuestas claras, completas y útiles. El estudiante se llama ${this.currentEstudiante?.nombre_completo?.split(' ')[0] || 'estudiante'} y estudia ${this.currentEstudiante?.especialidad || 'una especialidad'}. Responde cualquier pregunta de forma educativa, completa y amigable. Usa emojis ocasionalmente. Pregunta: ${mensaje}`
-                        }]
-                    }]
-                })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(cuerpo)
             });
             
             const data = await response.json();
+            console.log('📥 Respuesta Gemini:', data);
             
             if (data.error) {
                 console.error('Error Gemini:', data.error);
                 throw new Error(data.error.message);
             }
             
-            return data.candidates[0].content.parts[0].text;
+            if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+                return data.candidates[0].content.parts[0].text;
+            } else {
+                throw new Error('Respuesta inesperada de Gemini');
+            }
             
         } catch (error) {
             console.error('Error en consultarGemini:', error);
@@ -210,13 +177,11 @@ const App = {
     
     addMessage(text, role) {
         const container = document.getElementById('chatMessages');
-        if (!container) return;
-        
         const msgDiv = document.createElement('div');
         msgDiv.className = `message ${role}`;
         
         const avatar = role === 'user' ? '👤' : '🤖';
-        const time = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+        const time = new Date().toLocaleTimeString();
         
         const temp = document.createElement('div');
         temp.textContent = text;
@@ -236,19 +201,12 @@ const App = {
     
     scrollToBottom() {
         const container = document.getElementById('chatMessages');
-        if (container) {
-            setTimeout(() => {
-                container.scrollTop = container.scrollHeight;
-            }, 100);
-        }
+        setTimeout(() => container.scrollTop = container.scrollHeight, 100);
     },
     
     quickAsk(question) {
-        const input = document.getElementById('messageInput');
-        if (input) {
-            input.value = question;
-            this.sendMessage();
-        }
+        document.getElementById('messageInput').value = question;
+        this.sendMessage();
     },
     
     async logout() {
