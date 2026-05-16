@@ -2,7 +2,7 @@
 const CONFIG = {
     SUPABASE_URL: 'https://zgorzqfbqxnxcfzyirai.supabase.co',
     SUPABASE_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpnb3J6cWZicXhueGNmenlpcmFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4MDc4MjYsImV4cCI6MjA5NDM4MzgyNn0.muFPtmZ-WDJV9HYP6Y4EdPK9CwfmzZqa73kvVoKSBJg',
-    OPENROUTER_API_KEY: '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'
+    OPENROUTER_API_KEY: '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'
 };
 
 const App = {
@@ -11,7 +11,7 @@ const App = {
     currentEstudiante: null,
     
     async init() {
-        console.log('🚀 Iniciando...');
+        console.log('🚀 Iniciando aplicación...');
         this.supabase = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY);
         
         const { data: { session } } = await this.supabase.auth.getSession();
@@ -131,17 +131,19 @@ const App = {
     },
     
     async consultarOpenRouter(mensaje) {
-        // Modelos gratuitos que funcionan actualmente
+        // Modelos gratuitos que funcionan actualmente (mayo 2026)
         const modelosGratuitos = [
-            'google/gemini-2.0-flash-exp:free',      // Mejor calidad
-            'meta-llama/llama-3-8b-instruct:free',   // Buena calidad
-            'mistralai/mistral-7b-instruct:free',    // Rápido
-            'microsoft/phi-3-mini-4k-instruct:free', // Phi-3 (el que intentaste)
-            'qwen/qwen-2-7b-instruct:free'           // Alternativa china
+            'qwen/qwen3.6-plus-preview:free',      // Nuevo modelo de Alibaba, 1M contexto [citation:1]
+            'tencent/hy3-preview:free',              // Modelo de Tencent, 256K contexto [citation:8]
+            'nvidia/nemotron-3-super-120b-a12b:free', // NVIDIA, 1M contexto [citation:6]
+            'google/gemma-4-31b-it:free',            // Google Gemma 4 [citation:7]
+            'openrouter/free'                         // Router automático de OpenRouter [citation:5]
         ];
         
         for (const modelo of modelosGratuitos) {
             try {
+                console.log(`🔄 Probando modelo: ${modelo}`);
+                
                 const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
                     method: 'POST',
                     headers: {
@@ -155,7 +157,7 @@ const App = {
                         messages: [
                             {
                                 role: 'system',
-                                content: `Eres un asistente académico amable. El estudiante se llama ${this.currentEstudiante?.nombre_completo?.split(' ')[0] || 'estudiante'}. Responde de forma clara y educativa.`
+                                content: `Eres un asistente académico amable y educativo. El estudiante se llama ${this.currentEstudiante?.nombre_completo?.split(' ')[0] || 'estudiante'} y estudia ${this.currentEstudiante?.especialidad || 'tu especialidad'}. Responde cualquier pregunta de forma clara, completa y amigable. Usa emojis ocasionalmente.`
                             },
                             {
                                 role: 'user',
@@ -169,13 +171,13 @@ const App = {
                 
                 const data = await response.json();
                 
-                if (response.status === 404) {
-                    console.log(`Modelo ${modelo} no disponible, probando siguiente...`);
+                if (response.status === 404 || response.status === 400) {
+                    console.log(`❌ Modelo ${modelo} no disponible`);
                     continue;
                 }
                 
                 if (data.error) {
-                    console.log(`Error con ${modelo}:`, data.error);
+                    console.log(`❌ Error con ${modelo}:`, data.error.message);
                     continue;
                 }
                 
@@ -184,7 +186,7 @@ const App = {
                     return data.choices[0].message.content;
                 }
             } catch (e) {
-                console.log(`Falló ${modelo}`);
+                console.log(`❌ Falló ${modelo}`);
             }
         }
         
@@ -195,23 +197,24 @@ const App = {
     respuestaLocal(mensaje) {
         const p = mensaje.toLowerCase();
         
-        if (p.includes('hola') || p.includes('buenos')) {
-            return "¡Hola! 👋 ¿En qué puedo ayudarte hoy?";
+        const respuestas = {
+            'hola': '¡Hola! 👋 ¿En qué puedo ayudarte hoy?',
+            'buenos días': '¡Buenos días! 🌞 ¿Cómo puedo asistirte?',
+            'moto': '🏍️ **¿Qué es una moto?**\n\nUna motocicleta es un vehículo de dos ruedas impulsado por un motor. Tiene manillar para dirección y puede alcanzar altas velocidades. Existen varios tipos: deportivas, cruiser, touring, enduro, etc.',
+            'agua': '💧 **¿Qué es el agua?**\n\nEl agua es una molécula compuesta por dos átomos de hidrógeno y uno de oxígeno (H₂O). Es esencial para la vida, cubre el 71% de la Tierra y existe en tres estados: sólido, líquido y gaseoso.',
+            'ia': '🤖 **¿Qué es la Inteligencia Artificial?**\n\nEs la simulación de procesos de inteligencia humana por computadoras, incluyendo aprendizaje, razonamiento, percepción y procesamiento de lenguaje natural.',
+            'programación': '💻 **¿Qué es la programación?**\n\nEs el proceso de crear instrucciones para que una computadora ejecute tareas específicas. Lenguajes populares: Python, JavaScript, Java, C++.'
+        };
+        
+        for (const [key, value] of Object.entries(respuestas)) {
+            if (p.includes(key)) return value;
         }
         
-        if (p.includes('moto')) {
-            return "🏍️ **¿Qué es una moto?**\n\nUna motocicleta es un vehículo de dos ruedas impulsado por un motor. Tiene manillar para dirección y puede alcanzar altas velocidades. Existen varios tipos: deportivas, cruiser, touring, enduro, etc.";
+        if (p.includes('qué es') || p.includes('que es')) {
+            return `📚 **Sobre: "${mensaje}"**\n\nTe recomiendo buscar en Wikipedia o preguntar a tus profesores para una respuesta más precisa.\n\n¿Necesitas ayuda con otro tema? 🎓`;
         }
         
-        if (p.includes('agua')) {
-            return "💧 **¿Qué es el agua?**\n\nEl agua es una molécula compuesta por dos átomos de hidrógeno y uno de oxígeno (H₂O). Es esencial para la vida, cubre el 71% de la Tierra y existe en tres estados: sólido, líquido y gaseoso.";
-        }
-        
-        if (p.includes('ia') || p.includes('inteligencia artificial')) {
-            return "🤖 **¿Qué es la IA?**\n\nLa Inteligencia Artificial es la simulación de procesos de inteligencia humana por computadoras. Incluye aprendizaje automático, reconocimiento de patrones, procesamiento de lenguaje natural y más.";
-        }
-        
-        return `📚 **Respuesta académica**\n\nSobre tu pregunta: "${mensaje}"\n\nTe recomiendo buscar en fuentes confiables como Wikipedia, libros especializados o consultar a tus profesores.\n\n¿Necesitas ayuda con otro tema? 🎓`;
+        return `📚 **Respuesta académica**\n\nTu pregunta: "${mensaje}"\n\nPara una mejor respuesta, intenta preguntar "¿Qué es...?" o "Explícame..."\n\n¿Necesitas ayuda con algo más? 🎓`;
     },
     
     addMessage(text, role) {
