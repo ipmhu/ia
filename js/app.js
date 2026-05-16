@@ -130,15 +130,23 @@ const App = {
         }
     },
     
-    async consultarOpenRouter(mensaje) {
-        // Modelos gratuitos que funcionan actualmente (mayo 2026)
-        const modelosGratuitos = [
-            'qwen/qwen3.6-plus-preview:free',      // Nuevo modelo de Alibaba, 1M contexto [citation:1]
-            'tencent/hy3-preview:free',              // Modelo de Tencent, 256K contexto [citation:8]
-            'nvidia/nemotron-3-super-120b-a12b:free', // NVIDIA, 1M contexto [citation:6]
-            'google/gemma-4-31b-it:free',            // Google Gemma 4 [citation:7]
-            'openrouter/free'                         // Router automático de OpenRouter [citation:5]
-        ];
+   async consultarOpenRouter(mensaje) {
+
+    const response = await fetch("http://localhost:3000/chat", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            message: mensaje,
+            estudiante: this.currentEstudiante.nombre_completo
+        })
+    });
+
+    const data = await response.json();
+
+    return data.reply;
+}
         
         for (const modelo of modelosGratuitos) {
             try {
